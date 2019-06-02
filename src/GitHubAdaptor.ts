@@ -1,9 +1,8 @@
 import Octokit from "@octokit/rest";
 import { KoreFileAdaptor } from "./KoreFileAdaptor";
 import { encode as arrayBufferToBase64 } from "base64-arraybuffer";
-import { decode as base64ToString } from "base-64";
 
-const debug = require("debug")("git-commit-push-via-github-api");
+const debug = require("debug")("korefile");
 const GITHUB_API_TOKEN = process.env.GITHUB_API_TOKEN;
 
 export interface GitCommitPushOptions {
@@ -32,7 +31,7 @@ const getReferenceCommit = function(octokit: Octokit, options: Pick<GitCommitPus
         });
 };
 
-const createTree = function(octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "files">, data: any) {
+const createTree = function(octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "files">, data: { referenceCommitSha: string }) {
     const promises = options.files.map(file => {
         if (typeof file.content === "string") {
             return octokit.git
@@ -43,6 +42,7 @@ const createTree = function(octokit: Octokit, options: Pick<GitCommitPushOptions
                     encoding: "utf-8"
                 })
                 .then((blob: any) => {
+                    debug("createBlob:text");
                     return {
                         sha: blob.data.sha,
                         path: file.path,
@@ -59,6 +59,7 @@ const createTree = function(octokit: Octokit, options: Pick<GitCommitPushOptions
                     encoding: "base64"
                 })
                 .then((blob: any) => {
+                    debug("createBlob:buffer");
                     return {
                         sha: blob.data.sha,
                         path: file.path,
@@ -130,7 +131,7 @@ export const getContent = (github: Octokit, { owner, repo, path, ref }: {
         }
         if (res.data.encoding === "base64") {
             // TODO: support binary
-            return Promise.resolve(base64ToString(res.data.content));
+            return Promise.resolve(Buffer.from(res.data.content, "base64").toString());
         }
         throw new Error("Unknown file type" + res.data.type + ":" + res.data.encoding);
     });
@@ -154,7 +155,7 @@ export const deleteFile = async (octokit: Octokit, { owner, repo, path, ref, com
         owner,
         repo,
         path,
-        branch: ref,
+        branch: ref.replace(/^refs\//, "").replace(/^heads\//, ""),
         sha: data.sha,
         message: commitMessage
     }).then(res => {
@@ -181,13 +182,11 @@ export const createGitHubAdaptor = (options: GitHubAdaptorOptions): KoreFileAdap
     if (!token) {
         throw new Error(`token is not defined`);
     }
-    const octKit = new Octokit();
-    if (token) {
-        octKit.authenticate({
-            type: "oauth",
-            token: token
-        });
-    }
+    const octKit = new Octokit({
+        auth: token,
+        type: "oauth",
+        userAgent: "korefile"
+    });
     const filledOptions = {
         owner: options.owner,
         repo: options.repo,
