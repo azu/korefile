@@ -1,5 +1,4 @@
 import { createKoreFile, createGitHubAdaptor } from "../src/index";
-import * as fs from "fs";
 import * as assert from "assert";
 
 const testFilePath = "dir/file.test";
@@ -17,6 +16,5 @@ describe("GitHubAdapter", function() {
         const content = await koreFile.readFile(testFilePath);
         assert.strictEqual(content, input);
         await koreFile.deleteFile(testFilePath);
-        assert.ok(!fs.existsSync(testFilePath));
     });
 });
