@@ -17,7 +17,7 @@ Install with [npm](https://www.npmjs.com/):
 
 ## Usage
 
-Korefile apply [KoreFileAdapto](./src/KoreFileAdaptor.ts) implementation. 
+Korefile apply [KoreFileAdaptor](./src/KoreFileAdaptor.ts) implementation. 
 
 ### FsAdaptor
 
