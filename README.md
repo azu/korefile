@@ -21,6 +21,9 @@ Korefile apply [KoreFileAdaptor](./src/KoreFileAdaptor.ts) implementation.
 
 ### FsAdaptor
 
+Read/Write/Delete for local file system.
+It wrap `fs` module.
+
 ```js
 import {createKoreFile, createFsAdaptor} from "korefile";
 const koreFile = createKoreFile(createFsAdaptor());
@@ -35,6 +38,9 @@ const koreFile = createKoreFile(createFsAdaptor());
 ```
 
 ### GitHubAdaptor
+
+Read/Write/Delete for local file system.
+It wrap [octokit/rest.js](https://github.com/octokit/rest.js/).
 
 Require [GitHub Auth Token](https://github.com/settings/tokens/new).
 
