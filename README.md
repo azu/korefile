@@ -39,7 +39,7 @@ const koreFile = createKoreFile(createFsAdaptor());
 
 ### GitHubAdaptor
 
-Read/Write/Delete for GitHub repository files.
+Read/Write/Delete for GitHub repository.
 It wrap [octokit/rest.js](https://github.com/octokit/rest.js/).
 
 Require [GitHub Auth Token](https://github.com/settings/tokens/new).
