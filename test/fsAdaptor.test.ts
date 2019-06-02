@@ -3,7 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as assert from "assert";
 
-const testFilePath = path.join(__dirname, "file.test");
+const testFilePath = path.join(__dirname, "/file.test");
 describe("fsAdaptor", function() {
     afterEach(() => {
         try {
