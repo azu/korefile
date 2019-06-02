@@ -1,6 +1,6 @@
 # korefile [![Build Status](https://travis-ci.org/azu/korefile.svg?branch=master)](https://travis-ci.org/azu/korefile)
  
-> korefile: コレファイル
+> korefile: コレ・ファイル
  
 File System API for Local/GitHub.
 
