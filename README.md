@@ -2,6 +2,11 @@
  
 File System API for Local/GitHub.
 
+## Features
+
+- Write/Read/Delete API for Local/GitHub
+- Plugabble adaptor
+
 ## Install
 
 Install with [npm](https://www.npmjs.com/):
