@@ -1,0 +1,236 @@
+import Octokit from "@octokit/rest";
+import { KoreFileAdaptor } from "./KoreFileAdaptor";
+import { encode as arrayBufferToBase64 } from "base64-arraybuffer";
+import { decode as base64ToString } from "base-64";
+
+const debug = require("debug")("git-commit-push-via-github-api");
+const GITHUB_API_TOKEN = process.env.GITHUB_API_TOKEN;
+
+export interface GitCommitPushOptions {
+    owner: string;
+    repo: string;
+    files: {
+        path: string;
+        content: string | ArrayBuffer;
+    }[];
+    ref: string;
+    forceUpdate?: boolean;
+    commitMessage?: string;
+    token?: string; // or process.env.GITHUB_API_TOKEN
+}
+
+const getReferenceCommit = function(octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "ref">) {
+    return octokit.git.getRef(
+        {
+            owner: options.owner,
+            repo: options.repo,
+            ref: options.ref
+        })
+        .then(res => {
+            debug("getReferenceCommit Response: %O", res);
+            return { referenceCommitSha: res.data.object.sha };
+        });
+};
+
+const createTree = function(octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "files">, data: any) {
+    const promises = options.files.map(file => {
+        if (typeof file.content === "string") {
+            return octokit.git
+                .createBlob({
+                    owner: options.owner,
+                    repo: options.repo,
+                    content: file.content,
+                    encoding: "utf-8"
+                })
+                .then((blob: any) => {
+                    return {
+                        sha: blob.data.sha,
+                        path: file.path,
+                        mode: "100644",
+                        type: "blob"
+                    } as const;
+                });
+        } else if (ArrayBuffer.isView(file.content)) {
+            return octokit.git
+                .createBlob({
+                    owner: options.owner,
+                    repo: options.repo,
+                    content: arrayBufferToBase64(file.content),
+                    encoding: "base64"
+                })
+                .then((blob: any) => {
+                    return {
+                        sha: blob.data.sha,
+                        path: file.path,
+                        mode: "100644",
+                        type: "blob"
+                    } as const;
+                });
+        }
+        throw new Error(`This file can not handled: ${file}`);
+    });
+    return Promise.all(promises).then(files => {
+        debug("files: %O", files);
+        return octokit.git.createTree({
+            owner: options.owner,
+            repo: options.repo,
+            tree: files,
+            base_tree: data.referenceCommitSha
+        }).then(res => {
+            debug("createCommit Response: %O", res);
+            return {
+                ...data,
+                newTreeSha: res.data.sha
+            };
+        });
+    });
+};
+
+const createCommit = function(octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "commitMessage">, data: any) {
+    return octokit.git.createCommit(
+        {
+            owner: options.owner,
+            repo: options.repo,
+            message: options.commitMessage || "commit",
+            tree: data.newTreeSha,
+            parents: [data.referenceCommitSha]
+        }).then(res => {
+        debug("createTree Response: %O", res);
+        return { ...data, newCommitSha: res.data.sha };
+    });
+};
+
+const updateReference = function(github: Octokit, options: GitCommitPushOptions, data: any) {
+    return github.git.updateRef({
+        owner: options.owner,
+        repo: options.repo,
+        ref: options.ref,
+        sha: data.newCommitSha,
+        force: options.forceUpdate
+    }).then(res => {
+        debug("updateReference Response: %O", res);
+    });
+};
+
+export const getContent = (github: Octokit, { owner, repo, path, ref }: {
+    owner: string;
+    repo: string;
+    path: string;
+    ref: string;
+}) => {
+    return github.repos.getContents({
+        owner,
+        repo,
+        path,
+        ref
+    }).then(res => {
+        debug("getContent Response: %O", res);
+        if (res.data.type !== "file") {
+            return Promise.reject(new Error("This is not file:" + path));
+        }
+        if (res.data.encoding === "base64") {
+            // TODO: support binary
+            return Promise.resolve(base64ToString(res.data.content));
+        }
+        throw new Error("Unknown file type" + res.data.type + ":" + res.data.encoding);
+    });
+};
+
+export const deleteFile = async (octokit: Octokit, { owner, repo, path, ref, commitMessage }: {
+    owner: string;
+    repo: string;
+    path: string;
+    ref: string;
+    commitMessage: string;
+}) => {
+    const { data } = await octokit.repos.getContents({
+        owner,
+        repo,
+        path,
+        ref
+    });
+    debug("deleteFile:getContents Response: %O", data);
+    return octokit.repos.deleteFile({
+        owner,
+        repo,
+        path,
+        branch: ref,
+        sha: data.sha,
+        message: commitMessage
+    }).then(res => {
+        debug("deleteFile:deleteFile Response: %O", res);
+    });
+};
+
+
+export interface GitHubAdaptorOptions {
+    host?: string;
+    owner: string;
+    repo: string;
+    ref: string;
+    commitMessage?: {
+        write?: (filePath: string) => string;
+        delete?: (filePath: string) => string;
+    };
+    forceUpdate?: boolean;
+    token?: string; // or process.env.GITHUB_API_TOKEN
+}
+
+export const createGitHubAdaptor = (options: GitHubAdaptorOptions): KoreFileAdaptor => {
+    const token = options.token || GITHUB_API_TOKEN;
+    if (!token) {
+        throw new Error(`token is not defined`);
+    }
+    const octKit = new Octokit();
+    if (token) {
+        octKit.authenticate({
+            type: "oauth",
+            token: token
+        });
+    }
+    const filledOptions = {
+        owner: options.owner,
+        repo: options.repo,
+        ref: options.ref,
+        forceUpdate: options.forceUpdate || false
+    };
+    return {
+        readFile(filePath: string): Promise<string> {
+            return getContent(octKit, {
+                repo: filledOptions.repo,
+                owner: filledOptions.owner,
+                path: filePath,
+                ref: filledOptions.ref
+            });
+        },
+        writeFile(filePath: string, content: string | ArrayBuffer): Promise<void> {
+            const withFileOption = {
+                ...filledOptions,
+                files: [{
+                    path: filePath,
+                    content: content
+                }]
+            };
+            const commitMessage = options.commitMessage && typeof options.commitMessage.write === "function"
+                ? options.commitMessage.write(filePath)
+                : `Update ${filePath}`;
+            return getReferenceCommit(octKit, filledOptions)
+                .then(data => createTree(octKit, withFileOption, data))
+                .then(data => createCommit(octKit, {
+                    ...filledOptions,
+                    commitMessage
+                }, data))
+                .then(data => updateReference(octKit, withFileOption, data));
+        },
+        deleteFile(filePath: string): Promise<void> {
+            const commitMessage = options.commitMessage && typeof options.commitMessage.delete === "function"
+                ? options.commitMessage.delete(filePath)
+                : `Delete ${filePath}`;
+            return deleteFile(octKit, {
+                ...filledOptions,
+                path: filePath,
+                commitMessage: commitMessage
+            });
+        }
+    };
+};
