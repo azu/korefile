@@ -33,15 +33,15 @@ Require [GitHub Auth Token](https://github.com/settings/tokens/new).
 
 ```js
 import {createKoreFile, createGitHubAdaptor} from "korefile";
+const koreFile = createKoreFile(createGitHubAdaptor({
+    owner: "azu",
+    repo: "korefile",
+    ref: "heads/test",
+    token: process.env.GH_TOKEN // https://github.com/settings/tokens/new
+}));
 (async () => { 
     // file path should be relative
     const testFilePath = "file.test";
-    const koreFile = createKoreFile(createGitHubAdaptor({
-        owner: "azu",
-        repo: "korefile",
-        ref: "heads/test",
-        token: process.env.GH_TOKEN // https://github.com/settings/tokens/new
-    }));
     // write
     await koreFile.writeFile(testFilePath, input);
     // read
