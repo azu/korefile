@@ -13,7 +13,9 @@ describe("fsAdaptor", function() {
         }
     });
     it("write -> read -> delete", async () => {
-        const koreFile = createKoreFile(createFsAdaptor());
+        const koreFile = createKoreFile({
+            adaptor: createFsAdaptor()
+        });
         const input = "content";
         await koreFile.writeFile(testFilePath, input);
         const content = await koreFile.readFile(testFilePath);

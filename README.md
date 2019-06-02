@@ -26,7 +26,9 @@ It wrap `fs` module.
 
 ```js
 import {createKoreFile, createFsAdaptor} from "korefile";
-const koreFile = createKoreFile(createFsAdaptor());
+const koreFile = createKoreFile({ 
+    adaptor: createFsAdaptor()
+});
 (async () => { 
     // write
     await koreFile.writeFile("/path/to/file", "content");
@@ -46,12 +48,14 @@ Require [GitHub Auth Token](https://github.com/settings/tokens/new).
 
 ```js
 import {createKoreFile, createGitHubAdaptor} from "korefile";
-const koreFile = createKoreFile(createGitHubAdaptor({
-    owner: "azu",
-    repo: "korefile",
-    ref: "heads/test",
-    token: process.env.GH_TOKEN // https://github.com/settings/tokens/new
-}));
+const koreFile = createKoreFile({
+    adaptor: createGitHubAdaptor({
+        owner: "azu",
+        repo: "korefile",
+        ref: "heads/test",
+        token: process.env.GH_TOKEN
+    })
+});
 (async () => { 
     // file path should be relative
     const testFilePath = "file.test";
