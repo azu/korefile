@@ -68,6 +68,10 @@ const koreFile = createKoreFile({
 })();
 ```
 
+## UseCase
+
+- [github-funding-yml-updater](https://github.com/azu/github-funding-yml-updater)
+
 ## Changelog
 
 See [Releases page](https://github.com/azu/korefile/releases).
