@@ -70,6 +70,7 @@ const koreFile = createKoreFile({
 
 ## UseCase
 
+- [asocial-bookmark](https://github.com/azu/asocial-bookmark)
 - [github-funding-yml-updater](https://github.com/azu/github-funding-yml-updater)
 
 ## Changelog
