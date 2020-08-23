@@ -1,4 +1,4 @@
-import Octokit from "@octokit/rest";
+import { Octokit } from "@octokit/rest";
 import { KoreFileAdaptor } from "./KoreFileAdaptor";
 import { encode as arrayBufferToBase64 } from "base64-arraybuffer";
 
@@ -119,7 +119,7 @@ export const getContent = (github: Octokit, { owner, repo, path, ref }: {
     path: string;
     ref: string;
 }) => {
-    return github.repos.getContents({
+    return github.repos.getContent({
         owner,
         repo,
         path,
@@ -144,7 +144,7 @@ export const deleteFile = async (octokit: Octokit, { owner, repo, path, ref, com
     ref: string;
     commitMessage: string;
 }) => {
-    const { data } = await octokit.repos.getContents({
+    const { data } = await octokit.repos.getContent({
         owner,
         repo,
         path,
