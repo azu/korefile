@@ -1,6 +1,10 @@
 import { Octokit } from "@octokit/rest";
 import { KoreFileAdaptor } from "./KoreFileAdaptor";
 import { encode as arrayBufferToBase64 } from "base64-arraybuffer";
+// https://github.com/octokit/rest.js/issues/1971
+import type { components } from "@octokit/openapi-types";
+
+type GetRepoContentResponseDataFile = components["schemas"]["content-file"]
 
 const debug = require("debug")("korefile");
 const GITHUB_API_TOKEN = process.env.GITHUB_API_TOKEN;
@@ -125,15 +129,19 @@ export const getContent = (github: Octokit, { owner, repo, path, ref }: {
         path,
         ref
     }).then(res => {
+        const data = res.data as GetRepoContentResponseDataFile;
+        if (Array.isArray(data)) {
+            throw new Error(`folder does not support`);
+        }
         debug("getContent Response: %O", res);
-        if (res.data.type !== "file") {
+        if (data.type !== "file") {
             return Promise.reject(new Error("This is not file:" + path));
         }
-        if (res.data.encoding === "base64") {
+        if (data.encoding === "base64") {
             // TODO: support binary
-            return Promise.resolve(Buffer.from(res.data.content, "base64").toString());
+            return Promise.resolve(Buffer.from(data.content, "base64").toString());
         }
-        throw new Error("Unknown file type" + res.data.type + ":" + res.data.encoding);
+        throw new Error("Unknown file type" + data.type + ":" + data.encoding);
     });
 };
 
@@ -144,13 +152,17 @@ export const deleteFile = async (octokit: Octokit, { owner, repo, path, ref, com
     ref: string;
     commitMessage: string;
 }) => {
-    const { data } = await octokit.repos.getContent({
+    const response = await octokit.repos.getContent({
         owner,
         repo,
         path,
         ref
     });
+    const { data } = response;
     debug("deleteFile:getContents Response: %O", data);
+    if (Array.isArray(data)) {
+        throw new Error(`folder does not support`);
+    }
     return octokit.repos.deleteFile({
         owner,
         repo,
