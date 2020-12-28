@@ -1,16 +1,17 @@
 import { KoreFileAdaptor } from "./KoreFileAdaptor";
-import * as fs from "fs/promises";
+import * as fs from "fs";
 import * as path from "path";
+import * as util from "util";
 
 export interface FsAdaptorOptions {
     cwd?: string
 }
 
 export const createFsAdaptor = (options?: FsAdaptorOptions): KoreFileAdaptor => {
-    const readFile = fs.readFile;
-    const writeFile = fs.writeFile;
-    const unlinkFile = fs.unlink;
-    const mkdir = fs.mkdir;
+    const readFile = util.promisify(fs.readFile);
+    const writeFile = util.promisify(fs.writeFile);
+    const unlinkFile = util.promisify(fs.unlink);
+    const mkdir = util.promisify(fs.mkdir);
     const cwd = options && options.cwd ? options.cwd : process.cwd();
     return {
         readFile(filePath: string): Promise<string> {
