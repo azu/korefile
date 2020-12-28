@@ -1,4 +1,4 @@
-# korefile [![Build Status](https://travis-ci.org/azu/korefile.svg?branch=master)](https://travis-ci.org/azu/korefile)
+# korefile [![Actions Status: test](https://github.com/azu/korefile/workflows/test/badge.svg)](https://github.com/azu/korefile/actions?query=workflow%3A"test")
  
 > korefile: コレ・ファイル
  
@@ -7,7 +7,7 @@ File System API for Local/GitHub.
 ## Features
 
 - Write/Read/Delete API for Local/GitHub
-- Plugabble adaptor
+- Pluggable adaptor
 
 ## Install
 
@@ -22,7 +22,7 @@ Korefile apply [KoreFileAdaptor](./src/KoreFileAdaptor.ts) implementation.
 ### FsAdaptor
 
 Read/Write/Delete for local file system.
-It wrap `fs` module.
+It wraps `fs` module.
 
 ```js
 import {createKoreFile, createFsAdaptor} from "korefile";
