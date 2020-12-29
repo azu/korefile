@@ -233,6 +233,20 @@ export const createGitHubAdaptor = (options: GitHubAdaptorOptions): KoreFileAdap
                 }, data))
                 .then(data => updateReference(octKit, withFileOption, data));
         },
+        writeFiles(files: { path: string; content: string | ArrayBuffer }[]): Promise<void> {
+            const withFileOption = {
+                ...filledOptions,
+                files: files
+            };
+            const commitMessage = `Update files`;
+            return getReferenceCommit(octKit, filledOptions)
+                .then(data => createTree(octKit, withFileOption, data))
+                .then(data => createCommit(octKit, {
+                    ...filledOptions,
+                    commitMessage
+                }, data))
+                .then(data => updateReference(octKit, withFileOption, data));
+        },
         deleteFile(filePath: string): Promise<void> {
             const commitMessage = options.commitMessage && typeof options.commitMessage.delete === "function"
                 ? options.commitMessage.delete(filePath)

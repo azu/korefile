@@ -29,6 +29,12 @@ export const createFsAdaptor = (options?: FsAdaptorOptions): KoreFileAdaptor => 
                 return writeFile(resolvedFilePath, content, "utf-8");
             }
         },
+        async writeFiles(files: { path: string; content: string | ArrayBuffer }[]): Promise<void> {
+            const promises = files.map(file => {
+                return this.writeFile(file.path, file.content);
+            });
+            await Promise.all(promises);
+        },
         deleteFile(filePath: string): Promise<void> {
             return unlinkFile(path.resolve(cwd, filePath));
         }
