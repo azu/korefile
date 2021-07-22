@@ -162,6 +162,7 @@ export const getContent = (
                 return Promise.reject(new Error("This is not file:" + path));
             }
             if (data.encoding === "base64") {
+                // TODO: support binary
                 return Promise.resolve(fromBase64(data.content));
             }
             throw new Error("Unknown file type" + data.type + ":" + data.encoding);
