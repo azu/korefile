@@ -3,11 +3,12 @@ import { KoreFileAdaptor } from "./KoreFileAdaptor";
 import { encode as arrayBufferToBase64 } from "base64-arraybuffer";
 // https://github.com/octokit/rest.js/issues/1971
 import type { components } from "@octokit/openapi-types";
+import { toBase64 } from "js-base64";
 
-type GetRepoContentResponseDataFile = components["schemas"]["content-file"]
+type GetRepoContentResponseDataFile = components["schemas"]["content-file"];
 
 const debug = require("debug")("korefile");
-const GITHUB_API_TOKEN = process.env.GITHUB_API_TOKEN;
+const GITHUB_API_TOKEN = typeof process === "object" && process.env.GITHUB_API_TOKEN;
 
 export interface GitCommitPushOptions {
     owner: string;
@@ -22,21 +23,25 @@ export interface GitCommitPushOptions {
     token?: string; // or process.env.GITHUB_API_TOKEN
 }
 
-const getReferenceCommit = function(octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "ref">) {
-    return octokit.git.getRef(
-        {
+const getReferenceCommit = function (octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "ref">) {
+    return octokit.git
+        .getRef({
             owner: options.owner,
             repo: options.repo,
             ref: options.ref
         })
-        .then(res => {
+        .then((res) => {
             debug("getReferenceCommit Response: %O", res);
             return { referenceCommitSha: res.data.object.sha };
         });
 };
 
-const createTree = function(octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "files">, data: { referenceCommitSha: string }) {
-    const promises = options.files.map(file => {
+const createTree = function (
+    octokit: Octokit,
+    options: Pick<GitCommitPushOptions, "owner" | "repo" | "files">,
+    data: { referenceCommitSha: string }
+) {
+    const promises = options.files.map((file) => {
         if (typeof file.content === "string") {
             return octokit.git
                 .createBlob({
@@ -74,84 +79,111 @@ const createTree = function(octokit: Octokit, options: Pick<GitCommitPushOptions
         }
         throw new Error(`This file can not handled: ${file}`);
     });
-    return Promise.all(promises).then(files => {
+    return Promise.all(promises).then((files) => {
         debug("files: %O", files);
-        return octokit.git.createTree({
-            owner: options.owner,
-            repo: options.repo,
-            tree: files,
-            base_tree: data.referenceCommitSha
-        }).then(res => {
-            debug("createCommit Response: %O", res);
-            return {
-                ...data,
-                newTreeSha: res.data.sha
-            };
-        });
+        return octokit.git
+            .createTree({
+                owner: options.owner,
+                repo: options.repo,
+                tree: files,
+                base_tree: data.referenceCommitSha
+            })
+            .then((res) => {
+                debug("createCommit Response: %O", res);
+                return {
+                    ...data,
+                    newTreeSha: res.data.sha
+                };
+            });
     });
 };
 
-const createCommit = function(octokit: Octokit, options: Pick<GitCommitPushOptions, "owner" | "repo" | "commitMessage">, data: any) {
-    return octokit.git.createCommit(
-        {
+const createCommit = function (
+    octokit: Octokit,
+    options: Pick<GitCommitPushOptions, "owner" | "repo" | "commitMessage">,
+    data: any
+) {
+    return octokit.git
+        .createCommit({
             owner: options.owner,
             repo: options.repo,
             message: options.commitMessage || "commit",
             tree: data.newTreeSha,
             parents: [data.referenceCommitSha]
-        }).then(res => {
-        debug("createTree Response: %O", res);
-        return { ...data, newCommitSha: res.data.sha };
-    });
+        })
+        .then((res) => {
+            debug("createTree Response: %O", res);
+            return { ...data, newCommitSha: res.data.sha };
+        });
 };
 
-const updateReference = function(github: Octokit, options: GitCommitPushOptions, data: any) {
-    return github.git.updateRef({
-        owner: options.owner,
-        repo: options.repo,
-        ref: options.ref,
-        sha: data.newCommitSha,
-        force: options.forceUpdate
-    }).then(res => {
-        debug("updateReference Response: %O", res);
-    });
+const updateReference = function (github: Octokit, options: GitCommitPushOptions, data: any) {
+    return github.git
+        .updateRef({
+            owner: options.owner,
+            repo: options.repo,
+            ref: options.ref,
+            sha: data.newCommitSha,
+            force: options.forceUpdate
+        })
+        .then((res) => {
+            debug("updateReference Response: %O", res);
+        });
 };
 
-export const getContent = (github: Octokit, { owner, repo, path, ref }: {
-    owner: string;
-    repo: string;
-    path: string;
-    ref: string;
-}) => {
-    return github.repos.getContent({
+export const getContent = (
+    github: Octokit,
+    {
         owner,
         repo,
         path,
         ref
-    }).then(res => {
-        const data = res.data as GetRepoContentResponseDataFile;
-        if (Array.isArray(data)) {
-            throw new Error(`folder does not support`);
-        }
-        debug("getContent Response: %O", res);
-        if (data.type !== "file") {
-            return Promise.reject(new Error("This is not file:" + path));
-        }
-        if (data.encoding === "base64") {
-            // TODO: support binary
-            return Promise.resolve(Buffer.from(data.content, "base64").toString());
-        }
-        throw new Error("Unknown file type" + data.type + ":" + data.encoding);
-    });
+    }: {
+        owner: string;
+        repo: string;
+        path: string;
+        ref: string;
+    }
+) => {
+    return github.repos
+        .getContent({
+            owner,
+            repo,
+            path,
+            ref
+        })
+        .then((res) => {
+            const data = res.data as GetRepoContentResponseDataFile;
+            if (Array.isArray(data)) {
+                throw new Error(`folder does not support`);
+            }
+            debug("getContent Response: %O", res);
+            if (data.type !== "file") {
+                return Promise.reject(new Error("This is not file:" + path));
+            }
+            if (data.encoding === "base64") {
+                return Promise.resolve(toBase64(data.content));
+            }
+            throw new Error("Unknown file type" + data.type + ":" + data.encoding);
+        });
 };
 
-export const deleteFile = async (octokit: Octokit, { owner, repo, path, ref, commitMessage }: {
-    owner: string;
-    repo: string;
-    path: string;
-    ref: string;
-    commitMessage: string;
-}) => {
+export const deleteFile = async (
+    octokit: Octokit,
+    {
+        owner,
+        repo,
+        path,
+        ref,
+        commitMessage
+    }: {
+        owner: string;
+        repo: string;
+        path: string;
+        ref: string;
+        commitMessage: string;
+    }
+) => {
     const response = await octokit.repos.getContent({
         owner,
         repo,
@@ -163,18 +195,19 @@ export const deleteFile = async (octokit: Octokit, { owner, repo, path, ref, com
     if (Array.isArray(data)) {
         throw new Error(`folder does not support`);
     }
-    return octokit.repos.deleteFile({
-        owner,
-        repo,
-        path,
-        branch: ref.replace(/^refs\//, "").replace(/^heads\//, ""),
-        sha: data.sha,
-        message: commitMessage
-    }).then(res => {
-        debug("deleteFile:deleteFile Response: %O", res);
-    });
+    return octokit.repos
+        .deleteFile({
+            owner,
+            repo,
+            path,
+            branch: ref.replace(/^refs\//, "").replace(/^heads\//, ""),
+            sha: data.sha,
+            message: commitMessage
+        })
+        .then((res) => {
+            debug("deleteFile:deleteFile Response: %O", res);
+        });
 };
-
 
 export interface GitHubAdaptorOptions {
     host?: string;
@@ -217,21 +250,30 @@ export const createGitHubAdaptor = (options: GitHubAdaptorOptions): KoreFileAdap
         writeFile(filePath: string, content: string | ArrayBuffer): Promise<void> {
             const withFileOption = {
                 ...filledOptions,
-                files: [{
-                    path: filePath,
-                    content: content
-                }]
+                files: [
+                    {
+                        path: filePath,
+                        content: content
+                    }
+                ]
             };
-            const commitMessage = options.commitMessage && typeof options.commitMessage.write === "function"
-                ? options.commitMessage.write(filePath)
-                : `Update ${filePath}`;
+            const commitMessage =
+                options.commitMessage && typeof options.commitMessage.write === "function"
+                    ? options.commitMessage.write(filePath)
+                    : `Update ${filePath}`;
             return getReferenceCommit(octKit, filledOptions)
-                .then(data => createTree(octKit, withFileOption, data))
-                .then(data => createCommit(octKit, {
-                    ...filledOptions,
-                    commitMessage
-                }, data))
-                .then(data => updateReference(octKit, withFileOption, data));
+                .then((data) => createTree(octKit, withFileOption, data))
+                .then((data) =>
+                    createCommit(
+                        octKit,
+                        {
+                            ...filledOptions,
+                            commitMessage
+                        },
+                        data
+                    )
+                )
+                .then((data) => updateReference(octKit, withFileOption, data));
         },
         writeFiles(files: { path: string; content: string | ArrayBuffer }[]): Promise<void> {
             const withFileOption = {
@@ -240,17 +282,24 @@ export const createGitHubAdaptor = (options: GitHubAdaptorOptions): KoreFileAdap
             };
             const commitMessage = `Update files`;
             return getReferenceCommit(octKit, filledOptions)
-                .then(data => createTree(octKit, withFileOption, data))
-                .then(data => createCommit(octKit, {
-                    ...filledOptions,
-                    commitMessage
-                }, data))
-                .then(data => updateReference(octKit, withFileOption, data));
+                .then((data) => createTree(octKit, withFileOption, data))
+                .then((data) =>
+                    createCommit(
+                        octKit,
+                        {
+                            ...filledOptions,
+                            commitMessage
+                        },
+                        data
+                    )
+                )
+                .then((data) => updateReference(octKit, withFileOption, data));
         },
         deleteFile(filePath: string): Promise<void> {
-            const commitMessage = options.commitMessage && typeof options.commitMessage.delete === "function"
-                ? options.commitMessage.delete(filePath)
-                : `Delete ${filePath}`;
+            const commitMessage =
+                options.commitMessage && typeof options.commitMessage.delete === "function"
+                    ? options.commitMessage.delete(filePath)
+                    : `Delete ${filePath}`;
             return deleteFile(octKit, {
                 ...filledOptions,
                 path: filePath,
