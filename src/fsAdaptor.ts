@@ -4,7 +4,7 @@ import * as path from "path";
 import * as util from "util";
 
 export interface FsAdaptorOptions {
-    cwd?: string
+    cwd?: string;
 }
 
 export const createFsAdaptor = (options?: FsAdaptorOptions): KoreFileAdaptor => {
@@ -30,7 +30,7 @@ export const createFsAdaptor = (options?: FsAdaptorOptions): KoreFileAdaptor => 
             }
         },
         async writeFiles(files: { path: string; content: string | ArrayBuffer }[]): Promise<void> {
-            const promises = files.map(file => {
+            const promises = files.map((file) => {
                 return this.writeFile(file.path, file.content);
             });
             await Promise.all(promises);

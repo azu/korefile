@@ -1,9 +1,9 @@
 import { createKoreFile, createGitHubAdaptor } from "../src/index";
 import * as assert from "assert";
 
-const testFilePath = "dir/file.test";
+const testFilePath = "dir/file.test." + Date.now();
 const it = process.env.GH_TOKEN ? global.it : global.it.skip;
-describe("GitHubAdapter", function() {
+describe("GitHubAdapter", function () {
     it("write -> read -> delete", async () => {
         const koreFile = createKoreFile({
             adaptor: createGitHubAdaptor({

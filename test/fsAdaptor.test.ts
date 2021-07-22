@@ -4,13 +4,11 @@ import * as fs from "fs";
 import * as assert from "assert";
 
 const testFilePath = path.join(__dirname, "/file.test");
-describe("fsAdaptor", function() {
+describe("fsAdaptor", function () {
     afterEach(() => {
         try {
             fs.unlinkSync(testFilePath);
-        } catch {
-
-        }
+        } catch {}
     });
     it("write -> read -> delete", async () => {
         const koreFile = createKoreFile({

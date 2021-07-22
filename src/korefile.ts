@@ -5,7 +5,7 @@ export interface KoreFile {
 
     writeFile(filePath: string, content: string | ArrayBuffer): Promise<void>;
 
-    writeFiles(files: { path: string; content: string | ArrayBuffer }[]): Promise<void>
+    writeFiles(files: { path: string; content: string | ArrayBuffer }[]): Promise<void>;
 
     deleteFile(filePath: string): Promise<void>;
 }
