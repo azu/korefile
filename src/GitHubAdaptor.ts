@@ -4,10 +4,9 @@ import { encode as arrayBufferToBase64 } from "base64-arraybuffer";
 // https://github.com/octokit/rest.js/issues/1971
 import type { components } from "@octokit/openapi-types";
 import { fromBase64 } from "js-base64";
-
+import debug0 from "debug";
 type GetRepoContentResponseDataFile = components["schemas"]["content-file"];
-
-const debug = require("debug")("korefile");
+const debug = debug0("korefile");
 const GITHUB_API_TOKEN = typeof process === "object" && process.env.GITHUB_API_TOKEN;
 
 export interface GitCommitPushOptions {
